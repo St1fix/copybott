@@ -1,0 +1,42 @@
+name: Generate Session
+on:
+  workflow_dispatch:
+    inputs:
+      phone:
+        description: 'Твой номер телефона (с +)'
+        required: true
+      code:
+        description: 'Код (оставь пустым при 1 запуске)'
+        required: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - run: pip install telethon
+      - name: Generate Session
+        env:
+          API_ID: ${{ secrets.API_ID }}
+          API_HASH: ${{ secrets.API_HASH }}
+          PHONE: ${{ github.event.inputs.phone }}
+          CODE: ${{ github.event.inputs.code }}
+        run: |
+          python -c "
+          import os, asyncio
+          from telethon.sync import TelegramClient
+          from telethon.sessions import StringSession
+          
+          async def run():
+              client = TelegramClient(StringSession(), int(os.environ['API_ID']), os.environ['API_HASH'])
+              await client.connect()
+              if not os.environ['CODE']:
+                  await client.send_code_request(os.environ['PHONE'])
+                  print('КОД ОТПРАВЛЕН! Введи его при повторном запуске.')
+              else:
+                  await client.sign_in(os.environ['PHONE'], os.environ['CODE'])
+                  print('\nСЕССИЯ:\n' + client.session.save())
+          asyncio.run(run())
+          "
